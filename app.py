@@ -1,79 +1,53 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import yfinance as yf
-import warnings
-import statsmodels.tools.tools as sm
-import matplotlib.dates as mdates
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.stats.diagnostic import het_breuschpagan
+import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.stattools import adfuller
-from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_percentage_error
+import matplotlib.pyplot as plt
 from math import sqrt
 
-warnings.filterwarnings("ignore")
-
+# Download data saham BMRI
 df = yf.download("BMRI.JK", start="2019-12-01", end="2024-12-01")
 
-df_info = df.info()
-
-"""nih datanya cleaning"""
-
+# Memilih kolom Close dan mengisi nilai yang hilang
 df_close = df['Close']
 df_close = df_close.interpolate(method='linear')
 
-df_close.index = pd.to_datetime(df_close.index)
-
-"""datanya nyesuain dari adj close"""
-
-st.title('Harga Penutupan Saham BMRI')
-st.line_chart(df_close)
-
-adf_test = adfuller(df_close)
-adf_statistic = adf_test[0]
-p_value = adf_test[1]
-critical_values = adf_test[4]
-st.write(f"ADF Statistic: {adf_statistic}")
-st.write(f"P-value: {p_value}")
-st.write("Critical Values:")
-for key, value in critical_values.items():
-    st.write(f"{key}: {value}")
-if p_value < 0.05:
-    st.write("Data stasioner")
-else:
-    st.write("Data tidak stasioner")
-
-# lag 1
-df_diff = df_close.diff().dropna()
-adf_test_diff = adfuller(df_diff)
-
-st.write(f"ADF Statistic (Differenced Data): {adf_test_diff[0]}")
-st.write(f"P-value (Differenced Data): {adf_test_diff[1]}")
-
-if adf_test_diff[1] < 0.05:
-    st.write("Data yang telah di-differencing stasioner")
-else:
-    st.write("Data yang telah di-differencing masih tidak stasioner")
-
-plt.figure(figsize=(10, 6))
-plt.plot(df_diff)
-plt.title('Harga Adjusted Close (Setelah Differencing)')
-plt.xlabel('Tanggal')
-plt.ylabel('Harga Adjusted Close')
-plt.grid(True)
-st.pyplot()
-
+# Membuat model ARIMA
 model = ARIMA(df_close, order=(2, 1, 2))
 model_fit = model.fit()
 
-residuals = model_fit.resid
+# Prediksi harga saham untuk 30 hari ke depan
+forecast_steps = 30
+forecast = model_fit.forecast(steps=forecast_steps)
+last_date = df_close.index[-1]
+forecast_index = pd.date_range(start=last_date + pd.DateOffset(1), periods=forecast_steps)
+forecast_df = pd.DataFrame({'Date': forecast_index, 'Forecast': forecast})
+forecast_df = forecast_df.set_index('Date')
 
-plt.figure(figsize=(10, 6))
-plt.plot(residuals)
-plt.title('Residual ARIMA')
-plt.show()
-st.pyplot()
+# Menampilkan hasil prediksi dengan Streamlit
+st.title('Prediksi Harga Saham BMRI.JK')
+
+# Menampilkan tabel prediksi
+st.write("### Tabel Prediksi Harga Saham BMRI.JK:")
+st.dataframe(forecast_df)
+
+# Menggunakan date_input untuk memilih tanggal
+date_picker = st.date_input(
+    "Pilih Tanggal untuk Melihat Prediksi",
+    min_value=forecast_df.index.min(),
+    max_value=forecast_df.index.max(),
+    value=forecast_df.index[0]
+)
+
+# Menampilkan harga saham yang diprediksi pada tanggal yang dipilih
+selected_prediction = forecast_df.loc[date_picker]
+st.write(f"### Prediksi Harga Saham BMRI.JK pada {date_picker}:")
+st.write(f"**Prediksi Harga:** {selected_prediction['Forecast']:.2f} IDR")
+
+# Menampilkan grafik prediksi
+st.write("### Grafik Prediksi Harga Saham:")
+st.line_chart(forecast_df['Forecast'])
 
