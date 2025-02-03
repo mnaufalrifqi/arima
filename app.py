@@ -1,8 +1,7 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import yfinance as yf
+import altair as alt
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from math import sqrt
@@ -41,21 +40,38 @@ st.write("Menggunakan model ARIMA untuk memprediksi harga saham BMRI.JK selama 3
 st.subheader("Hasil Prediksi Harga Saham BMRI.JK (30 Hari ke Depan)")
 st.write(forecast_df)
 
-# Tambahkan grafik untuk actual vs forecast
+# Tambahkan grafik untuk actual vs forecast menggunakan Altair
 st.subheader("Grafik Harga Saham BMRI.JK (Prediksi vs Aktual)")
 
-# Plotting grafik untuk actual dan forecast
-plt.figure(figsize=(12, 6))
-plt.plot(df_close, label='Actual', color='blue')
-plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
-plt.title('BMRI.JK Stock Price Forecast (30 days)')
-plt.xlabel('Date')
-plt.ylabel('Closing Price')
-plt.legend()
-plt.grid(True)
+# Siapkan data untuk plotting menggunakan Altair
+df_plot = pd.DataFrame({
+    'Date': df_close.index,
+    'Value': df_close.values,
+    'Type': ['Actual'] * len(df_close)
+})
 
-# Menampilkan grafik dengan Streamlit
-st.pyplot(plt)
+forecast_plot = pd.DataFrame({
+    'Date': forecast_df.index,
+    'Value': forecast_df['Forecast'],
+    'Type': ['Forecast'] * len(forecast_df)
+})
+
+# Gabungkan data actual dan forecast
+df_combined = pd.concat([df_plot, forecast_plot])
+
+# Grafik dengan Altair
+chart = alt.Chart(df_combined).mark_line().encode(
+    x='Date:T',
+    y='Value:Q',
+    color='Type:N'
+).properties(
+    title='BMRI.JK Stock Price Forecast (30 days)',
+    width=800,
+    height=400
+)
+
+# Menampilkan grafik Altair
+st.altair_chart(chart)
 
 # Pilihan untuk memilih tanggal tertentu
 date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min().date(), max_value=forecast_df.index.max().date())
@@ -71,18 +87,28 @@ if date_choice in forecast_df.index:
     forecast_value = forecast_df.loc[date_choice, 'Forecast']
     st.write(f"Harga Prediksi pada {date_choice.date()}: {forecast_value}")
     
-    # Plot grafik
-    plt.figure(figsize=(12, 6))
-    plt.plot(df_close, label='Actual', color='blue')
-    plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
-    plt.axvline(x=date_choice, color='red', linestyle='--', label=f'Selected Date: {date_choice.date()}')
-    plt.title('Harga Saham BMRI.JK - Prediksi vs Aktual')
-    plt.xlabel('Tanggal')
-    plt.ylabel('Harga Penutupan')
-    plt.legend()
-    plt.grid(True)
-    st.pyplot(plt)
-    
+    # Plot grafik menggunakan Altair dengan garis vertikal di tanggal yang dipilih
+    selected_plot = df_combined[df_combined['Date'] <= date_choice]
+    selected_chart = alt.Chart(selected_plot).mark_line().encode(
+        x='Date:T',
+        y='Value:Q',
+        color='Type:N'
+    ).properties(
+        title=f'Harga Saham BMRI.JK dan Prediksi pada {date_choice.date()}',
+        width=800,
+        height=400
+    )
+
+    # Menambahkan garis vertikal pada tanggal yang dipilih
+    vertical_line = alt.Chart(pd.DataFrame({
+        'Date': [date_choice],
+        'Value': [forecast_value]
+    })).mark_rule(color='red').encode(x='Date:T')
+
+    # Gabungkan grafik dan garis vertikal
+    final_chart = selected_chart + vertical_line
+    st.altair_chart(final_chart)
+
     # Hitung dan tampilkan error prediksi
     actual_values = df_close.loc[forecast_df.index]
     mape = mean_absolute_percentage_error(actual_values, forecast_df['Forecast'])
