@@ -7,6 +7,23 @@ from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 from math import sqrt
+import altair as alt
+
+# Membuat data untuk chart
+data = pd.DataFrame({
+    'x': [1, 2, 3, 4, 5],
+    'y': [10, 20, 30, 40, 50]
+})
+
+# Membuat chart
+chart = alt.Chart(data).mark_line().encode(
+    x='x',
+    y='y'
+)
+
+# Menampilkan chart di Streamlit
+st.altair_chart(chart, use_container_width=True)
+
 
 # Download data saham BMRI
 df = yf.download("BMRI.JK", start="2019-12-01", end="2024-12-01")
