@@ -4,19 +4,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import yfinance as yf
-import statsmodels.tools.tools as sm
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from math import sqrt
-
-# Menyembunyikan peringatan
 import warnings
 warnings.filterwarnings("ignore")
 
-# Download data saham
+# Download data saham BMRI.JK
 df = yf.download("BMRI.JK", start="2019-12-01", end="2024-12-01")
 
-# Data cleaning
+# Data cleaning (interpolasi untuk nilai NaN)
 df_close = df['Close']
 df_close = df_close.interpolate(method='linear')
 
@@ -46,7 +43,7 @@ st.subheader("Hasil Prediksi Harga Saham BMRI.JK (30 Hari ke Depan)")
 st.write(forecast_df)
 
 # Pilihan untuk memilih tanggal tertentu
-date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min(), max_value=forecast_df.index.max())
+date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min().date(), max_value=forecast_df.index.max().date())
 
 # Pastikan date_choice adalah dalam format yang sesuai dan berada dalam rentang prediksi
 date_choice = pd.to_datetime(date_choice)  # memastikan format datetime yang benar
@@ -83,4 +80,3 @@ if date_choice in forecast_df.index:
     st.write(f"RMSE: {rmse:.2f}")
 else:
     st.error(f"Tanggal {date_choice.date()} tidak ada dalam rentang prediksi.")
-
