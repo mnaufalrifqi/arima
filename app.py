@@ -58,7 +58,7 @@ if date_choice in forecast_df.index:
     
     # Plot grafik
     plt.figure(figsize=(12, 6))
-    plt.plot(df_close, label='Actual')
+    plt.plot(df_close, label='Actual', color='blue')
     plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
     plt.axvline(x=date_choice, color='red', linestyle='--', label=f'Selected Date: {date_choice.date()}')
     plt.title('Harga Saham BMRI.JK - Prediksi vs Aktual')
