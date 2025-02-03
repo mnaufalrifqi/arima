@@ -1,35 +1,37 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import yfinance as yf
-import statsmodels.api as sm
-from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
-from math import sqrt
-import altair as alt
+import seaborn as sns
+import yfinance as yf
 import statsmodels.tools.tools as sm
-import matplotlib.dates as mdates
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.stats.diagnostic import het_breuschpagan
 from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.stattools import adfuller
-from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
+from math import sqrt
 
+# Menyembunyikan peringatan
+import warnings
+warnings.filterwarnings("ignore")
 
-# Download data saham BMRI
+# Download data saham
 df = yf.download("BMRI.JK", start="2019-12-01", end="2024-12-01")
 
-# Memilih kolom Close dan mengisi nilai yang hilang
+# Data cleaning
 df_close = df['Close']
 df_close = df_close.interpolate(method='linear')
 
-# Membuat model ARIMA
+# Differencing untuk membuat data stasioner
+df_diff = df_close.diff().dropna()
+
+# Membangun model ARIMA
 model = ARIMA(df_close, order=(2, 1, 2))
 model_fit = model.fit()
 
-# Prediksi harga saham untuk 30 hari ke depan
+# Prediksi 30 hari ke depan
 forecast_steps = 30
 forecast = model_fit.forecast(steps=forecast_steps)
+
+# Menyiapkan tanggal untuk prediksi
 last_date = df_close.index[-1]
 forecast_index = pd.date_range(start=last_date + pd.DateOffset(1), periods=forecast_steps)
 forecast_df = pd.DataFrame({'Date': forecast_index, 'Forecast': forecast})
@@ -46,22 +48,22 @@ st.write(forecast_df)
 # Pilihan untuk memilih tanggal tertentu
 date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min(), max_value=forecast_df.index.max())
 
+# Pastikan date_choice adalah dalam format yang sesuai dan berada dalam rentang prediksi
+date_choice = pd.to_datetime(date_choice)  # memastikan format datetime yang benar
+
 # Grafik prediksi vs aktual berdasarkan tanggal pilihan
-if date_choice:
-    st.subheader(f"Grafik Harga Saham BMRI.JK dan Prediksi pada Tanggal {date_choice}")
+if date_choice in forecast_df.index:
+    st.subheader(f"Grafik Harga Saham BMRI.JK dan Prediksi pada Tanggal {date_choice.date()}")
     
-    # Filter data berdasarkan tanggal yang dipilih
+    # Ambil nilai forecast untuk tanggal yang dipilih
     forecast_value = forecast_df.loc[date_choice, 'Forecast']
-    actual_value = df_close[date_choice] if date_choice in df_close else None
-    
-    if actual_value is not None:
-        st.write(f"Harga Aktual: {actual_value}")
+    st.write(f"Harga Prediksi pada {date_choice.date()}: {forecast_value}")
     
     # Plot grafik
     plt.figure(figsize=(12, 6))
     plt.plot(df_close, label='Actual')
     plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
-    plt.axvline(x=date_choice, color='red', linestyle='--', label=f'Selected Date: {date_choice}')
+    plt.axvline(x=date_choice, color='red', linestyle='--', label=f'Selected Date: {date_choice.date()}')
     plt.title('Harga Saham BMRI.JK - Prediksi vs Aktual')
     plt.xlabel('Tanggal')
     plt.ylabel('Harga Penutupan')
@@ -74,3 +76,11 @@ if date_choice:
     mape = mean_absolute_percentage_error(actual_values, forecast_df['Forecast'])
     mse = mean_squared_error(actual_values, forecast_df['Forecast'])
     rmse = sqrt(mse)
+    
+    st.subheader("Error Prediksi")
+    st.write(f"MAPE: {mape * 100:.2f}%")
+    st.write(f"MSE: {mse:.2f}")
+    st.write(f"RMSE: {rmse:.2f}")
+else:
+    st.error(f"Tanggal {date_choice.date()} tidak ada dalam rentang prediksi.")
+
