@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 import yfinance as yf
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
@@ -41,6 +40,22 @@ st.write("Menggunakan model ARIMA untuk memprediksi harga saham BMRI.JK selama 3
 # Tampilkan hasil prediksi
 st.subheader("Hasil Prediksi Harga Saham BMRI.JK (30 Hari ke Depan)")
 st.write(forecast_df)
+
+# Tambahkan grafik untuk actual vs forecast
+st.subheader("Grafik Harga Saham BMRI.JK (Prediksi vs Aktual)")
+
+# Plotting grafik untuk actual dan forecast
+plt.figure(figsize=(12, 6))
+plt.plot(df_close, label='Actual', color='blue')
+plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
+plt.title('BMRI.JK Stock Price Forecast (30 days)')
+plt.xlabel('Date')
+plt.ylabel('Closing Price')
+plt.legend()
+plt.grid(True)
+
+# Menampilkan grafik dengan Streamlit
+st.pyplot(plt)
 
 # Pilihan untuk memilih tanggal tertentu
 date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min().date(), max_value=forecast_df.index.max().date())
