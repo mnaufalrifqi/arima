@@ -4,25 +4,16 @@ import pandas as pd
 import yfinance as yf
 import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 from math import sqrt
 import altair as alt
-
-# Membuat data untuk chart
-data = pd.DataFrame({
-    'x': [1, 2, 3, 4, 5],
-    'y': [10, 20, 30, 40, 50]
-})
-
-# Membuat chart
-chart = alt.Chart(data).mark_line().encode(
-    x='x',
-    y='y'
-)
-
-# Menampilkan chart di Streamlit
-st.altair_chart(chart, use_container_width=True)
+import statsmodels.tools.tools as sm
+import matplotlib.dates as mdates
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.stats.diagnostic import het_breuschpagan
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.stattools import adfuller
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 
 
 # Download data saham BMRI
@@ -44,27 +35,42 @@ forecast_index = pd.date_range(start=last_date + pd.DateOffset(1), periods=forec
 forecast_df = pd.DataFrame({'Date': forecast_index, 'Forecast': forecast})
 forecast_df = forecast_df.set_index('Date')
 
-# Menampilkan hasil prediksi dengan Streamlit
-st.title('Prediksi Harga Saham BMRI.JK')
+# Streamlit layout
+st.title("Prediksi Harga Saham BMRI.JK")
+st.write("Menggunakan model ARIMA untuk memprediksi harga saham BMRI.JK selama 30 hari ke depan.")
 
-# Menampilkan tabel prediksi
-st.write("### Tabel Prediksi Harga Saham BMRI.JK:")
-st.dataframe(forecast_df)
+# Tampilkan hasil prediksi
+st.subheader("Hasil Prediksi Harga Saham BMRI.JK (30 Hari ke Depan)")
+st.write(forecast_df)
 
-# Menggunakan date_input untuk memilih tanggal
-date_picker = st.date_input(
-    "Pilih Tanggal untuk Melihat Prediksi",
-    min_value=forecast_df.index.min(),
-    max_value=forecast_df.index.max(),
-    value=forecast_df.index[0]
-)
+# Pilihan untuk memilih tanggal tertentu
+date_choice = st.date_input("Pilih tanggal prediksi", min_value=forecast_df.index.min(), max_value=forecast_df.index.max())
 
-# Menampilkan harga saham yang diprediksi pada tanggal yang dipilih
-selected_prediction = forecast_df.loc[date_picker]
-st.write(f"### Prediksi Harga Saham BMRI.JK pada {date_picker}:")
-st.write(f"**Prediksi Harga:** {selected_prediction['Forecast']:.2f} IDR")
-
-# Menampilkan grafik prediksi
-st.write("### Grafik Prediksi Harga Saham:")
-st.line_chart(forecast_df['Forecast'])
-
+# Grafik prediksi vs aktual berdasarkan tanggal pilihan
+if date_choice:
+    st.subheader(f"Grafik Harga Saham BMRI.JK dan Prediksi pada Tanggal {date_choice}")
+    
+    # Filter data berdasarkan tanggal yang dipilih
+    forecast_value = forecast_df.loc[date_choice, 'Forecast']
+    actual_value = df_close[date_choice] if date_choice in df_close else None
+    
+    if actual_value is not None:
+        st.write(f"Harga Aktual: {actual_value}")
+    
+    # Plot grafik
+    plt.figure(figsize=(12, 6))
+    plt.plot(df_close, label='Actual')
+    plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='orange')
+    plt.axvline(x=date_choice, color='red', linestyle='--', label=f'Selected Date: {date_choice}')
+    plt.title('Harga Saham BMRI.JK - Prediksi vs Aktual')
+    plt.xlabel('Tanggal')
+    plt.ylabel('Harga Penutupan')
+    plt.legend()
+    plt.grid(True)
+    st.pyplot(plt)
+    
+    # Hitung dan tampilkan error prediksi
+    actual_values = df_close.loc[forecast_df.index]
+    mape = mean_absolute_percentage_error(actual_values, forecast_df['Forecast'])
+    mse = mean_squared_error(actual_values, forecast_df['Forecast'])
+    rmse = sqrt(mse)
